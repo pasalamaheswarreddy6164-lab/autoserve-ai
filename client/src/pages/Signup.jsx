@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Car, User, Mail, Lock, Phone, AlertCircle, UserCheck } from 'lucide-react';
+import { Car, User, Mail, Lock, Phone, AlertCircle } from 'lucide-react';
 
 export default function Signup() {
   const { signup } = useAuth();
@@ -50,23 +50,10 @@ export default function Signup() {
             </div>
           )}
 
-          {/* Role selector */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {['customer', 'agent'].map(r => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setForm(f => ({ ...f, role: r }))}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                  form.role === r
-                    ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                    : 'border-slate-600 text-slate-400 hover:border-slate-500'
-                }`}
-              >
-                {r === 'customer' ? <Car className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
-                <span className="text-sm font-medium capitalize">{r}</span>
-              </button>
-            ))}
+          {/* Customer only — no role selector */}
+          <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 mb-5">
+            <Car className="w-5 h-5 text-blue-400 flex-shrink-0" />
+            <p className="text-sm text-blue-400 font-medium">Signing up as Customer</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
