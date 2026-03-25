@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
-const { route } = require('../services/agentRouter');
+const { route, autoAnalyze } = require('../services/agentRouter');
 const email = require('../services/emailService');
 
 const router = express.Router();
@@ -76,23 +76,22 @@ router.post('/', verifyToken, async (req, res) => {
         `UPDATE cases SET status = 'scheduled', updated_at = NOW() WHERE id = $1`,
         [caseId]
       );
-      // Email customer about AI-booked appointment
       email.sendAppointmentScheduled({
         customerEmail: caseData.customer_email,
         customerName:  caseData.customer_name,
         caseData,
         appointment,
-        agentName:     null,
+        agentName: null,
       });
     }
 
-    // If an agent sent a human message (not copilot), notify the customer by email
+    // If agent sent a human message notify customer by email
     if (req.user.role === 'agent' && portal !== 'agent' && caseData.customer_email) {
       email.sendAgentMessage({
         customerEmail: caseData.customer_email,
         customerName:  caseData.customer_name,
         caseData,
-        agentName:     req.user.name,
+        agentName: req.user.name,
         message,
       });
     }
@@ -117,6 +116,47 @@ router.get('/:caseId', verifyToken, async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/chat/:caseId/analyze - Auto-analyze case for agent (called when agent opens case)
+router.get('/:caseId/analyze', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'agent') return res.status(403).json({ error: 'Agents only' });
+
+    // Get case details
+    const { rows: caseRows } = await pool.query(
+      `SELECT c.*, cu.full_name AS customer_name
+       FROM cases c LEFT JOIN users cu ON cu.id = c.customer_id WHERE c.id = $1`,
+      [req.params.caseId]
+    );
+    if (!caseRows.length) return res.status(404).json({ error: 'Case not found' });
+    const caseData = caseRows[0];
+
+    // Check if auto-analysis already done
+    const { rows: existing } = await pool.query(
+      `SELECT id FROM messages WHERE case_id = $1 AND is_copilot = TRUE AND sender_role = 'ai' LIMIT 1`,
+      [req.params.caseId]
+    );
+
+    if (existing.length) {
+      return res.json({ alreadyDone: true });
+    }
+
+    // Run auto-analysis
+    const analysis = await autoAnalyze(caseData);
+
+    // Save to copilot messages
+    await pool.query(
+      `INSERT INTO messages (case_id, sender_role, ai_bot, content, is_copilot)
+       VALUES ($1, 'ai', 'DiagnosticBot', $2, TRUE)`,
+      [req.params.caseId, analysis]
+    );
+
+    res.json({ analysis, botName: 'DiagnosticBot' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });

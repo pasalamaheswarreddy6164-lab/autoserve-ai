@@ -12,8 +12,26 @@ export default function ChatWidget({ caseId, portal = 'customer', caseTitle = ''
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    if (open && caseId) loadHistory();
+    if (open && caseId) {
+      loadHistory();
+      // Auto-analyze when agent opens copilot for first time
+      if (portal === 'agent') triggerAutoAnalyze();
+    }
   }, [open, caseId]);
+
+  const triggerAutoAnalyze = async () => {
+    try {
+      const res = await api.get(`/chat/${caseId}/analyze`);
+      if (res.data.analysis) {
+        setMessages(prev => [...prev, {
+          sender_role: 'ai',
+          ai_bot: 'DiagnosticBot',
+          content: res.data.analysis,
+          id: Date.now(),
+        }]);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
