@@ -99,12 +99,6 @@ export default function Login() {
             <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-medium">Sign up</Link>
           </p>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-3 bg-slate-900/60 rounded-lg border border-slate-700">
-            <p className="text-xs text-slate-500 font-medium mb-2">Demo Agent Credentials:</p>
-            <p className="text-xs text-slate-400">agent1@autoserve.com / password</p>
-            <p className="text-xs text-slate-400">agent2@autoserve.com / password</p>
-          </div>
         </div>
       </div>
     </div>
